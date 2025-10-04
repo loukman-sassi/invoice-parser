@@ -4,7 +4,10 @@ declare(strict_types=1);
 
 namespace App\Tests;
 
+use App\Repository\InvoiceRepository;
+use App\Service\CsvInvoiceParser;
 use App\Service\InvoiceParser;
+use App\Service\JsonInvoiceParser;
 use Doctrine\DBAL\Connection;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
@@ -12,17 +15,18 @@ use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 class InvoiceParserTest extends KernelTestCase
 {
     private $entityManager;
+    private $invoiceRepository;
 
     public function testParseJson(): void
     {
         $this->entityManager = $this->createMock(EntityManagerInterface::class);
+        $this->invoiceRepository = $this->createMock(InvoiceRepository::class);
+        $this->invoiceRepository
+            ->expects($this->atLeastOnce())
+            ->method('modifyInvoice');
 
-        $connection = $this->createMock(Connection::class);
-        $this->entityManager->method('getConnection')->willReturn($connection);
+        $invoiceParser = new JsonInvoiceParser($this->entityManager, $this->invoiceRepository);
 
-        $connection->expects($this->exactly(10))->method('executeStatement');
-
-        $invoiceParser = new InvoiceParser($this->entityManager);
 
         $invoiceParser->parse('data/invoices.json');
     }
@@ -30,16 +34,14 @@ class InvoiceParserTest extends KernelTestCase
     public function testParseCsv(): void
     {
         $this->entityManager = $this->createMock(EntityManagerInterface::class);
+        $this->invoiceRepository = $this->createMock(InvoiceRepository::class);
+        $this->invoiceRepository
+            ->expects($this->atLeastOnce())
+            ->method('modifyInvoice');
 
-        $connection = $this->createMock(Connection::class);
-        $this->entityManager->method('getConnection')->willReturn($connection);
-
-        $connection->expects($this->exactly(10))->method('executeStatement');
-
-        $invoiceParser = new InvoiceParser($this->entityManager);
+        $invoiceParser = new CsvInvoiceParser($this->entityManager, $this->invoiceRepository);
 
         $invoiceParser->parse('data/invoices.csv');
     }
 
 }
-

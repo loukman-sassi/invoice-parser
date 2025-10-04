@@ -5,7 +5,8 @@ declare(strict_types=1);
 
 namespace App\Command;
 
-use App\Service\InvoiceParser;
+use App\Service\CsvInvoiceParser;
+use App\Service\JsonInvoiceParser;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
@@ -14,18 +15,30 @@ use Symfony\Component\Console\Output\OutputInterface;
 #[AsCommand(name: 'app:parse')]
 class ParseInvoicesCommand extends Command
 {
-    private InvoiceParser $parser;
+    private JsonInvoiceParser $JsonParser;
+    private CsvInvoiceParser $CsvParser;
 
-    public function __construct(InvoiceParser $parser)
+    public function __construct(JsonInvoiceParser $JsonParser, CsvInvoiceParser $CsvParser)
     {
         parent::__construct();
-        $this->parser = $parser;
+        $this->JsonParser = $JsonParser;
+        $this->CsvParser = $CsvParser;
     }
 
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
-        $this->parser->parse('data/invoices.json');
-        $this->parser->parse('data/invoices.csv');
+        $directory = 'data/';
+        $files = glob($directory . '*');
+        foreach ($files as $file) {
+            $extension = pathinfo($file, PATHINFO_EXTENSION);
+            $parser_map = [
+                'csv' => $this->CsvParser,
+                'json' => $this->JsonParser,
+            ];
+            if (isset($parser_map[$extension])) {
+                $parser_map[$extension]->parse($file);
+            }
+        }
         return Command::SUCCESS;
     }
 }
